@@ -8,18 +8,89 @@ output:
 
 ## Loading and preprocessing the data
 
-
+# Load library
+  library(dplyr)
+ 
+# Baca data
+  activity <- read.csv("activity.csv")
+ 
+# Konversi format tanggal
+  activity$date <- as.Date(activity$date)
 
 ## What is mean total number of steps taken per day?
 
+# Hitung total langkah per hari
+  daily_steps <- activity %>% group_by(date) %>% summarize(total_steps = sum(steps, na.rm = TRUE))
+  `summarise()` ungrouping output (override with `.groups` argument)
 
+# Histogram
+  hist(daily_steps$total_steps, main = "Total Steps per Day", xlab = "Steps", col = "skyblue")
+ 
+# Hitung rata-rata dan median
+  mean(daily_steps$total_steps, na.rm = TRUE)
+  [1] 9354.23
+  median(daily_steps$total_steps, na.rm = TRUE)
+  [1] 10395
 
 ## What is the average daily activity pattern?
 
+interval_avg <- activity %>%
++     group_by(interval) %>%
++     summarize(mean_steps = mean(steps, na.rm = TRUE))
+`summarise()` ungrouping output (override with `.groups` argument)
+> 
+> plot(interval_avg$interval, interval_avg$mean_steps, type = "l",
++      main = "Average Daily Activity Pattern", xlab = "Interval", ylab = "Average Steps")
+> 
+> # Interval dengan langkah maksimum
+> interval_avg[which.max(interval_avg$mean_steps), ]
+# A tibble: 1 x 2
+  interval mean_steps
+     <int>      <dbl>
+1      835       206.
+> 
 
 
 ## Imputing missing values
 
-
+> # Jumlah nilai NA
+> sum(is.na(activity$steps))
+[1] 2304
+> 
+> # Ganti NA dengan rata-rata per interval
+> activity_imputed <- activity
+> activity_imputed$steps <- ifelse(is.na(activity_imputed$steps),
++                                  interval_avg$mean_steps[match(activity_imputed$interval, interval_avg$interval)],
++                                  activity_imputed$steps)
+> 
+> # Histogram baru
+> daily_steps_imputed <- activity_imputed %>%
++     group_by(date) %>%
++     summarize(total_steps = sum(steps))
+`summarise()` ungrouping output (override with `.groups` argument)
+> 
+> hist(daily_steps_imputed$total_steps, main = "Total Steps per Day (Imputed)", col = "orange")
+> mean(daily_steps_imputed$total_steps)
+[1] 10766.19
+> median(daily_steps_imputed$total_steps)
+[1] 10766.19
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+# Tambah variabel jenis hari
+> activity_imputed$day_type <- ifelse(weekdays(activity_imputed$date) %in% c("Saturday", "Sunday"),
++                                     "weekend", "weekday")
+> activity_imputed$day_type <- as.factor(activity_imputed$day_type)
+> 
+> # Hitung rata-rata langkah per interval dan jenis hari
+> interval_daytype <- activity_imputed %>%
++     group_by(interval, day_type) %>%
++     summarize(mean_steps = mean(steps), .groups = "drop")
+> 
+> # Plot panel
+> library(ggplot2)
+> ggplot(interval_daytype, aes(x = interval, y = mean_steps)) +
++     geom_line() +
++     facet_wrap(~day_type, ncol = 1) +
++     labs(title = "Average Steps per Interval: Weekday vs Weekend", x = "Interval", y = "Steps")
+
